@@ -1,0 +1,29 @@
+name: Telegram Bot Deployment
+
+on:
+  push:
+    branches:
+      - main  # Replace with your branch name
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 'latest'
+
+      - name: Install dependencies
+        run: |
+          pip install python-telegram-bot openai
+
+      - name: Run bot script
+        run: telebot.py  # Replace with your bot script filename
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}  # Set your environment variables
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
