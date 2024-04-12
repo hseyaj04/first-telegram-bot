@@ -1,79 +1,41 @@
-import telegram
-from telegram.ext import Updater, MessageHandler, Filters, CommandHandler
+import telebot
+import requests
 
-# Import OpenAI library for ChatGPT
-import openai
 
-# Set up your Telegram Bot API token
-TELEGRAM_TOKEN = '6967743469:AAGUviYWycx9JWS7inqzVYJx0g61AiQZ8R0'
+bot_token = "6933167161:AAFHapG3jme_rjHXOy0fIcnt4DbqX0rfgXA"
 
-# Set up your OpenAI API key
-OPENAI_API_KEY = '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'
 
-# Initialize your ChatGPT OpenAI API client
-openai.api_key = OPENAI_API_KEY
+brainshop_api_key = "5xWG4vXjOtAUXi5I"
 
-# Dictionary to store conversation history
-conversation_history = {}
 
-# Function to handle incoming messages
-def handle_message(update, context):
-    user_message = update.message.text
-    chat_id = update.message.chat_id
+bot = telebot.TeleBot(bot_token)
 
-    # Get or initialize conversation history for this chat_id
-    history = conversation_history.get(chat_id, [])
 
-    # Add the user's message to the conversation history
-    history.append({"role": "user", "content": user_message})
-    conversation_history[chat_id] = history
+@bot.message_handler(func=lambda message: True)
+def handle_message(message):
+    user_message = message.text
 
-    # Use the entire conversation history as context for ChatGPT
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "system", "content": "You are a helpful assistant."}] + history
-    )
+    
+    brainshop_url = (f"http://api.brainshop.ai/get?bid=181435&key=5xWG4vXjOtAUXi5I&uid=1&msg={user_message}" )
+    payload = {
+        "apikey": brainshop_api_key,
+        "message": user_message
+    }
 
-    # Get the response from ChatGPT
-    bot_response = response['choices'][0]['message']['content']
+   
+    try:
+        response = requests.post(brainshop_url, json=payload)
+        response.raise_for_status() 
 
-    # Add ChatGPT's response to the conversation history
-    history.append({"role": "system", "content": bot_response})
-    conversation_history[chat_id] = history
+        brainshop_response = response.json()["cnt"] 
 
-    # Send ChatGPT's response back to the user
-    context.bot.send_message(chat_id=chat_id, text=bot_response)
+       
+        bot.send_message(message.chat.id, brainshop_response)
+    except requests.exceptions.RequestException as e:
+        
+        error_message = f"An error occurred: {e}"
+        bot.send_message(message.chat.id, error_message)
 
-# Function to handle /start command
-def start(update, context):
-    chat_id = update.message.chat_id
-    context.bot.send_message(chat_id=chat_id, text="Welcome! I'm your ChatGPT bot. Feel free to start a conversation.")
 
-# Function to handle /help command
-def help(update, context):
-    chat_id = update.message.chat_id
-    help_text = "I'm a ChatGPT bot. Just start chatting with me and I'll respond!"
-    context.bot.send_message(chat_id=chat_id, text=help_text)
 
-def main():
-    updater = Updater(token=TELEGRAM_TOKEN, use_context=True)
-    dispatcher = updater.dispatcher
-
-    # Handle incoming messages with the handle_message function
-    message_handler = MessageHandler(Filters.text & ~Filters.command, handle_message)
-    dispatcher.add_handler(message_handler)
-
-    # Handle /start command
-    start_handler = CommandHandler('start', start)
-    dispatcher.add_handler(start_handler)
-
-    # Handle /help command
-    help_handler = CommandHandler('help', help)
-    dispatcher.add_handler(help_handler)
-
-    # Start the bot
-    updater.start_polling()
-    updater.idle()
-
-if __name__ == '__main__':
-    main()
+bot.polling()
